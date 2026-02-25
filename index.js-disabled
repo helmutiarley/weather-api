@@ -1,0 +1,93 @@
+const express = require('express');
+
+const app = express();
+
+const port = 3000;
+
+app.get('/weather', async (req, res) => {
+    // let url = 'https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current_weather=true';
+
+    const lat = req.query.lat;
+    const lon = req.query.lon;
+
+    // Store safely (convert to numbers if needed)
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lon);
+
+    // Build API URL using stored values
+    const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
+
+  try {
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    let fetchdLat = data.latitude;
+    let fetchdLon = data.longitude;
+    let fetchdCurrentWeather = data.current_weather;
+    console.log("Current weather:", fetchdCurrentWeather);
+
+    res.status(200).json({
+    message: 'Weather data fetched successfully',
+    latitude: fetchdLat,
+    longitude: fetchdLon,
+    windSpeed: fetchdCurrentWeather.windspeed,
+    temperature: fetchdCurrentWeather.temperature,
+    });
+  } catch (err) {
+    console.error("Request failed:", err.message);
+  }
+});
+
+app.get('/weather/:city', async (req, res) => {
+    // hard coded url https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1
+    const { city } = req.params;
+    const apiCityUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`;
+
+    try {
+    const response = await fetch(apiCityUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+    }
+    const citydata = await response.json();
+    const cityLatitude = citydata.results[0].latitude;
+    const cityLongitude = citydata.results[0].longitude;
+    console.log(`City: ${city}, Latitude: ${cityLatitude}, Longitude: ${cityLongitude}`);
+
+    // Build API URL using stored values
+    const meteoCityUrl = `https://api.open-meteo.com/v1/forecast?latitude=${cityLatitude}&longitude=${cityLongitude}&current_weather=true`;
+
+    try {
+        const weatherResponse = await fetch(meteoCityUrl);
+        if (!weatherResponse.ok) {
+          throw new Error(`HTTP ${weatherResponse.status} - ${weatherResponse.statusText}`);
+        }
+        const weatherData = await weatherResponse.json();
+
+        console.log(`Weather data for ${city}:`, weatherData.current_weather);
+
+        res.status(200).json({
+            message: 'Weather data fetched successfully',
+            latitude: weatherData.latitude,
+            longitude: weatherData.longitude,
+            windSpeed: weatherData.current_weather.windspeed,
+            temperature: weatherData.current_weather.temperature,
+            });
+            
+    } catch (err) {
+        console.error("Request failed:", err.message);
+    }
+ 
+    } catch (err) {
+        console.error("Request failed:", err.message);
+    }
+    // res.status(200).json({ message: `Weather data for ${city} fetched successfully` });   
+})
+
+app.listen(port, () => {
+  console.log('Server is running on port 3000');
+});
